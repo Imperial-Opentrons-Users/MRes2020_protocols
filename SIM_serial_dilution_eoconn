@@ -1,0 +1,38 @@
+from opentrons import simulate
+metadata = {'apiLevel': '2.8'}
+protocol = simulate.get_protocol_api('2.8')
+
+#Labware
+plate = protocol.load_labware('corning_96_wellplate_360ul_flat', 1)
+tiprack_1 = protocol.load_labware('opentrons_96_tiprack_300ul', 2)
+tiprack_2 = protocol.load_labware('opentrons_96_tiprack_300ul', 4)
+reservoir = protocol.load_labware('usascientific_12_reservoir_22ml', 3)
+
+#pipettes
+p300 = protocol.load_instrument('p300_single_gen2', 'right', tip_racks=[tiprack_1])
+protocol.max_speeds['Z'] = 10
+p300_multi = protocol.load_instrument('p300_multi_gen2', 'left', tip_racks=[tiprack_2])
+
+#list of volumes for PBS
+vols = [0,100,100,100,100,100,100,100,100,100,100,100]
+
+#distributing 100 uL PBS in wells 2-12
+for i in range(4):   
+    p300.transfer(vols, reservoir.wells('A1'), plate.rows()[i], blow_out=False, new_tip='once')
+
+#distributing 100 uL fluoresecein 
+#How do you get it to stop after column D?
+p300.transfer(100, reservoir.wells('A2'), plate.columns()[0:2], blow_out=False, new_tip='once')
+    
+
+#use a multichannel pipette
+for x in range (10):
+    p300_multi.transfer(100, plate.columns()[x+1], plate.columns()[x+2], mix_before=(3,100), touch_tip=True, blow_out=True, blowout_location='destination well', new_tip='once') 
+
+#last 100 uL from col11 into waste
+p300_multi.pick_up_tip()
+p300_multi.aspirate(100, plate['A11'])
+p300_multi.drop_tip()
+   
+for line in protocol.commands(): 
+        print(line)
